@@ -101,6 +101,13 @@ export class RulesManager {
   }
 
   /**
+   * 当前规则文件路径（供代理等判断是否需重载）
+   */
+  getRulesPath(): string {
+    return this.rulesPath;
+  }
+
+  /**
    * 重新加载规则（用于文件修改后手动刷新）
    */
   reloadRules(): void {
@@ -246,6 +253,37 @@ export class RulesManager {
    */
   getRuleById(id: string): MockRule | undefined {
     return this.rules.get(id);
+  }
+
+  /**
+   * 根据 URL 和方法精确查找规则（用于添加时判断是否已存在，避免重复）
+   */
+  getRuleByUrlAndMethod(url: string, method: string): MockRule | undefined {
+    const normalizedMethod = method.toUpperCase();
+    for (const rule of this.rules.values()) {
+      if (rule.url === url && rule.method.toUpperCase() === normalizedMethod) {
+        return rule;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * 添加或更新规则：若已存在相同 url+method 的规则则覆盖，否则新增（避免同一接口多条）
+   */
+  addOrUpdateRule(rule: Omit<MockRule, 'id' | 'createdAt' | 'updatedAt'>): MockRule {
+    const existing = this.getRuleByUrlAndMethod(rule.url, rule.method);
+    if (existing) {
+      const updated = this.updateRule(existing.id, {
+        response: rule.response,
+        statusCode: rule.statusCode,
+        headers: rule.headers,
+        delay: rule.delay,
+        enabled: rule.enabled ?? true,
+      });
+      return updated!;
+    }
+    return this.addRule(rule);
   }
 
   /**

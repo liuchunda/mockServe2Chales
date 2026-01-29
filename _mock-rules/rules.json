@@ -1,0 +1,203 @@
+{
+  "rules": [
+    {
+      "url": "/mtop/proretail/teach/v2/getExamDetail",
+      "method": "POST",
+      "response": {
+        "traceId": "ffff548fca87886b4a642121ce091293",
+        "code": 0,
+        "attachments": {
+          "timestamp": "1769676893668"
+        },
+        "data": {
+          "trainingType": 8,
+          "examStatus": "3",
+          "passingScore": "60",
+          "practiceScore": "5.0",
+          "examDuration": 10,
+          "totalScore": "100",
+          "practiceDimensions": [
+            {
+              "userScore": "10.0",
+              "dimension": "需求探寻",
+              "totalScore": "20",
+              "checkResult": "建议店员主动向顾客发起交流提问，如询问顾客的具体需求、使用场景及购买目的，进一步了解装修进度和客户类型，从而提供更精准的服务。比如顾客问到背屏功能，询问顾客平时有没有需要经常出差/需要记录的信息？",
+              "weightRatio": "0.2"
+            },
+            {
+              "userScore": "15.0",
+              "dimension": "产品知识",
+              "totalScore": "20",
+              "checkResult": "店员需熟悉并主动介绍产品的具体参数和特点，同时了解并介绍上门勘测服务的政策，提升专业度。",
+              "weightRatio": "0.2"
+            },
+            {
+              "userScore": "0.0",
+              "dimension": "场景话术",
+              "totalScore": "20",
+              "checkResult": "建议店员结合顾客需求讲解产品的具体使用场景，提升沟通的针对性与说服力。",
+              "weightRatio": "0.2"
+            },
+            {
+              "userScore": "5.0",
+              "dimension": "服务态度",
+              "totalScore": "20",
+              "checkResult": "店员需展现更积极主动和耐心的服务态度，主动安抚和认可顾客，积极邀请顾客体验产品，营造良好服务氛围。",
+              "weightRatio": "0.2"
+            },
+            {
+              "userScore": "0.0",
+              "dimension": "疑虑解决",
+              "totalScore": "20",
+              "checkResult": "建议店员加强疑问的理解与回应能力，针对顾客疑虑提供专业、详细的解答。",
+              "weightRatio": "0.2"
+            }
+          ],
+          "score": "95.0",
+          "submitTime": "1769657060164",
+          "availableRetakes": "100",
+          "examStatusDescription": "挑战2失败，仍需练习！",
+          "trainingTitle": "想要购买中央空调但无明确意向的顾客",
+          "userScoreSummary": "店员在各维度均未表现出主动性或提供有效信息，服务过程显得被动且缺乏耐心与专业性积累。",
+          "practiceResp": {
+            "bestSellerInfo": {
+              "areaName": "四川分公司",
+              "headImageUrl": "https://cdn.cnbj1.fds.api.mi-img.com/nr-pub/202510221423_f8c8e8ab630f20ab39ae76705eba39a7.jpg",
+              "caseVideo": {
+                "filename": "",
+                "url": ""
+              },
+              "scriptList": [
+                {
+                  "answer": "1",
+                  "question": "1"
+                }
+              ],
+              "name": "11",
+              "storeName": "小米之家四川德阳市旌阳区上美广场专卖店",
+              "introduction": "11",
+              "orgId": "JM261924"
+            },
+            "spuId": "",
+            "chatRecordlist": [
+              {
+                "side": 2,
+                "content": "嗯，我就是随便看看你们的中央空调。"
+              },
+              {
+                "side": 1,
+                "content": "你好，你好。"
+              }
+            ]
+          }
+        },
+        "message": "ok"
+      },
+      "statusCode": 200,
+      "enabled": true,
+      "id": "24d36307-d828-4021-b9fa-0bf8980271ea",
+      "createdAt": "2026-01-29T08:56:48.538Z",
+      "updatedAt": "2026-01-29T08:56:48.538Z"
+    },
+    {
+      "url": "/mtop/proretail/teach/v2/getExamDetail",
+      "method": "POST",
+      "response": {
+        "traceId": "ffff548fca87886b4a642121ce091293",
+        "code": 0,
+        "attachments": {
+          "timestamp": "1769676893668"
+        },
+        "data": {
+          "trainingType": 8,
+          "examStatus": "3",
+          "passingScore": "60",
+          "practiceScore": "5.0",
+          "examDuration": 10,
+          "totalScore": "100",
+          "practiceDimensions": [
+            {
+              "userScore": "0.0",
+              "dimension": "需求探寻",
+              "totalScore": "20",
+              "checkResult": "建议店员主动向顾客发起交流提问，如询问顾客的具体需求、使用场景及购买目的，进一步了解装修进度和客户类型，从而提供更精准的服务。比如顾客问到背屏功能，询问顾客平时有没有需要经常出差/需要记录的信息？",
+              "weightRatio": "0.2"
+            },
+            {
+              "userScore": "0.0",
+              "dimension": "产品知识",
+              "totalScore": "20",
+              "checkResult": "店员需熟悉并主动介绍产品的具体参数和特点，同时了解并介绍上门勘测服务的政策，提升专业度。",
+              "weightRatio": "0.2"
+            },
+            {
+              "userScore": "0.0",
+              "dimension": "场景话术",
+              "totalScore": "20",
+              "checkResult": "建议店员结合顾客需求讲解产品的具体使用场景，提升沟通的针对性与说服力。",
+              "weightRatio": "0.2"
+            },
+            {
+              "userScore": "5.0",
+              "dimension": "服务态度",
+              "totalScore": "20",
+              "checkResult": "店员需展现更积极主动和耐心的服务态度，主动安抚和认可顾客，积极邀请顾客体验产品，营造良好服务氛围。",
+              "weightRatio": "0.2"
+            },
+            {
+              "userScore": "0.0",
+              "dimension": "疑虑解决",
+              "totalScore": "20",
+              "checkResult": "建议店员加强疑问的理解与回应能力，针对顾客疑虑提供专业、详细的解答。",
+              "weightRatio": "0.2"
+            }
+          ],
+          "score": "0.0",
+          "submitTime": "1769657060164",
+          "availableRetakes": "100",
+          "examStatusDescription": "挑战失败，仍需练习！",
+          "trainingTitle": "想要购买中央空调但无明确意向的顾客",
+          "userScoreSummary": "店员在各维度均未表现出主动性或提供有效信息，服务过程显得被动且缺乏耐心与专业性积累。",
+          "practiceResp": {
+            "bestSellerInfo": {
+              "areaName": "四川分公司",
+              "headImageUrl": "https://cdn.cnbj1.fds.api.mi-img.com/nr-pub/202510221423_f8c8e8ab630f20ab39ae76705eba39a7.jpg",
+              "caseVideo": {
+                "filename": "",
+                "url": ""
+              },
+              "scriptList": [
+                {
+                  "answer": "1",
+                  "question": "1"
+                }
+              ],
+              "name": "11",
+              "storeName": "小米之家四川德阳市旌阳区上美广场专卖店",
+              "introduction": "11",
+              "orgId": "JM261924"
+            },
+            "spuId": "",
+            "chatRecordlist": [
+              {
+                "side": 2,
+                "content": "嗯，我就是随便看看你们的中央空调。"
+              },
+              {
+                "side": 1,
+                "content": "你好，你好。"
+              }
+            ]
+          }
+        },
+        "message": "ok"
+      },
+      "statusCode": 200,
+      "enabled": true,
+      "id": "1197c4df-a664-4e5c-b9cf-51a64bcd5515",
+      "createdAt": "2026-01-29T11:15:56.820Z",
+      "updatedAt": "2026-01-29T11:15:56.820Z"
+    }
+  ],
+  "version": "1.0.0"
+}

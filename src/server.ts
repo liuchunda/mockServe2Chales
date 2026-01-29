@@ -7,11 +7,13 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { createProxyServer } from './proxy.js';
+import { fileURLToPath } from 'url';
 import { 
   getConfig, 
   isPortAvailable, 
   findAvailablePort,
   killProcessByPort,
+  setClientProjectRoot,
 } from './config.js';
 import {
   addMockRuleTool,
@@ -23,7 +25,7 @@ import {
   reloadRulesTool,
   toolHandlers,
 } from './tools.js';
-import { getRulesManager } from './rules.js';
+import { getRulesManager, reloadRules } from './rules.js';
 
 /**
  * 启动 MCP Mock Server
@@ -48,7 +50,7 @@ async function main() {
   // 初始化 MCP 服务器
   const server = new Server(
     {
-      name: 'mcp-mock-server',
+      name: 'mockserver-mcp-charles',
       version: '1.0.0',
     },
     {
@@ -73,9 +75,34 @@ async function main() {
     };
   });
 
+  // 客户端初始化完成后，从 MCP 客户端（如 Cursor）获取工作区根目录，用于准确解析项目路径
+  server.oninitialized = async () => {
+    try {
+      const result = await server.listRoots();
+      if (result?.roots?.length) {
+        const first = result.roots[0];
+        if (first?.uri?.startsWith('file:')) {
+          const projectPath = fileURLToPath(first.uri);
+          setClientProjectRoot(projectPath);
+          console.error(`[mockserver-mcp-charles] 已使用 MCP 客户端工作区根目录: ${projectPath}`);
+        }
+      }
+    } catch (err) {
+      // 客户端可能不支持 roots（如部分旧版 Cursor），回退到默认推断的 workspace 根目录
+      console.error('[mockserver-mcp-charles] 未从客户端获取 roots，使用默认项目根推断:', err instanceof Error ? err.message : String(err));
+    }
+  };
+
   // 注册工具调用处理器
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+    const safeArgs = args || {};
+
+    // 若大模型在调用 tool 时传入了「用户代码的工作区目录」，则设为项目根并重载规则，使代理读取数据也使用该项目
+    if (safeArgs.workspaceRoot && typeof safeArgs.workspaceRoot === 'string' && safeArgs.workspaceRoot.trim()) {
+      setClientProjectRoot(safeArgs.workspaceRoot.trim());
+      reloadRules(); // 使 RulesManager 从新项目根重新加载 rules.json，接口（代理）后续读取的即是该项目
+    }
 
     const handler = toolHandlers[name];
     if (!handler) {
@@ -83,7 +110,7 @@ async function main() {
     }
 
     try {
-      const result = await handler(args || {});
+      const result = await handler(safeArgs);
       return {
         content: [
           {

@@ -19,6 +19,31 @@ React Native App → Charles Proxy → MCP Mock Server → 真实API或返回Moc
 
 ## 安装
 
+### 方式一：作为 npm 包使用（推荐）
+
+无需克隆仓库，通过 npx 直接运行，适合在 Cursor 中作为 MCP 服务使用：
+
+1. **在 Cursor 中配置 MCP**  
+   编辑 `~/.cursor/mcp.json`（或 Cursor 设置中的 MCP 配置），添加：
+
+```json
+{
+  "mcpServers": {
+    "mi-mock-server": {
+      "command": "npx",
+      "args": ["-y", "mockserver-mcp-charles"]
+    }
+  }
+}
+```
+
+`-y` 会在首次运行时自动同意安装包。配置完成后重启 Cursor 或重新加载 MCP，即可使用。
+
+2. **配置文件位置**  
+   以 npm 包方式运行时，工作目录一般为 Cursor 打开的项目根目录。请在该项目根目录下放置 `miMockServerConfig.json`（可选），或使用默认配置。
+
+### 方式二：本地开发 / 克隆仓库
+
 ```bash
 # 安装依赖
 npm install
@@ -33,11 +58,13 @@ npm start
 npm run dev
 ```
 
+**发布为 npm 包**：在项目根目录执行 `npm publish` 前会自动执行 `npm run build`，仅会发布 `dist` 与 `README.md`。
+
 ## 配置
 
 ### 基本配置
 
-在 mockServe 目录下创建 `miMockServerConfig.json` 文件（可选，有默认配置）：
+在**项目根目录**或 mockServe 目录下创建 `miMockServerConfig.json` 文件（可选，有默认配置）：
 
 ```json
 {
@@ -57,15 +84,13 @@ npm run dev
 
 ### MCP 客户端配置（Cursor）
 
-在 Cursor 的 MCP 配置中添加：
-
-**注意**：`type` 字段**不需要填写**。本服务使用标准的 stdio 传输方式，Cursor 会自动识别。如果某些版本的 Cursor 要求必须填写 `type` 字段，可以设置为 `"stdio"`：
+- **通过 npm 包使用**：见上方「方式一：作为 npm 包使用」，在 `~/.cursor/mcp.json` 中配置 `npx -y mockserver-mcp-charles` 即可。
+- **本地克隆方式**：在 Cursor 的 MCP 配置中指定本地入口（`type` 可不填，本服务使用 stdio，Cursor 会自动识别）：
 
 ```json
 {
   "mcpServers": {
-    "mcp-mock-server": {
-      "type": "stdio",
+    "mockserver-mcp-charles": {
       "command": "node",
       "args": ["/path/to/mockServe/dist/server.js"]
     }

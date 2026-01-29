@@ -12,110 +12,33 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * 获取项目根目录
- * 优先使用 process.cwd()（Cursor 打开的项目目录）
- * 如果 process.cwd() 不存在或无效，则使用 MCP 服务本身的目录
- * 如果当前目录是 mockServe 子目录，继续向上查找真正的项目根目录
+ * 工作区根目录：仅由 MCP Roots（listRoots）或 tool 参数 workspaceRoot（WORKSPACE_ROOT_PARAM）设置。
+ * 未设置时用 process.cwd() 作为最小回退，保证服务能启动。
  */
-function findProjectRoot(): string {
-  // 优先使用 process.cwd()，这通常是 Cursor 打开的项目目录
-  const cwd = process.cwd();
-  
-  // 检查 cwd 是否有效（存在且可访问）
-  if (cwd && existsSync(cwd)) {
-    // 检查当前目录是否是 mockServe 子目录
-    const currentDirName = cwd.split(/[/\\]/).pop() || '';
-    const isMockServeDir = currentDirName === 'mockServe' || cwd.endsWith('/mockServe') || cwd.endsWith('\\mockServe');
-    
-    if (isMockServeDir) {
-      // 当前目录是 mockServe，继续向上查找项目根目录
-      const parentDir = dirname(cwd);
-      if (existsSync(parentDir)) {
-        const parentPackageJsonPath = join(parentDir, 'package.json');
-        if (existsSync(parentPackageJsonPath)) {
-          // 父目录有 package.json，说明父目录是项目根目录
-          return parentDir;
-        }
-      }
-    }
-    
-    // 检查当前目录的父目录是否包含 mockServe 子目录
-    // 如果包含，说明父目录是项目根目录
-    const parentDir = dirname(cwd);
-    if (existsSync(parentDir)) {
-      const mockServeDir = join(parentDir, 'mockServe');
-      if (existsSync(mockServeDir)) {
-        const parentPackageJsonPath = join(parentDir, 'package.json');
-        if (existsSync(parentPackageJsonPath)) {
-          // 父目录包含 mockServe 子目录且有 package.json，说明父目录是项目根目录
-          return parentDir;
-        }
-      }
-    }
-    
-    // 尝试在 cwd 中查找 package.json，确认这是一个项目目录
-    const packageJsonPath = join(cwd, 'package.json');
-    if (existsSync(packageJsonPath)) {
-      return cwd;
-    }
-    // 即使没有 package.json，也使用 cwd（可能是其他类型的项目）
-    return cwd;
-  }
-  
-  // 如果 cwd 无效，回退到 MCP 服务本身的目录
-  let currentDir = __dirname;
-  const root = resolve('/');
-  
-  while (currentDir !== root) {
-    // 检查当前目录是否是 mockServe 子目录
-    const currentDirName = currentDir.split(/[/\\]/).pop() || '';
-    const isMockServeDir = currentDirName === 'mockServe' || currentDir.endsWith('/mockServe') || currentDir.endsWith('\\mockServe');
-    
-    if (isMockServeDir) {
-      // 当前目录是 mockServe，继续向上查找
-      currentDir = dirname(currentDir);
-      continue;
-    }
-    
-    // 检查当前目录的父目录是否包含 mockServe 子目录
-    const parentDir = dirname(currentDir);
-    if (existsSync(parentDir)) {
-      const mockServeDir = join(parentDir, 'mockServe');
-      if (existsSync(mockServeDir)) {
-        const parentPackageJsonPath = join(parentDir, 'package.json');
-        if (existsSync(parentPackageJsonPath)) {
-          // 父目录包含 mockServe 子目录且有 package.json，说明父目录是项目根目录
-          return parentDir;
-        }
-      }
-    }
-    
-    const packageJsonPath = join(currentDir, 'package.json');
-    if (existsSync(packageJsonPath)) {
-      return currentDir;
-    }
-    currentDir = dirname(currentDir);
-  }
-  
-  // 最后的回退
-  return cwd || currentDir;
-}
-
-// 不在模块加载时计算 PROJECT_ROOT，而是在需要时动态获取
-// const PROJECT_ROOT = findProjectRoot();
+let clientProjectRoot: string | null = null;
 
 /**
- * 获取项目根目录（动态获取，确保使用当前工作目录）
+ * 设置工作区根目录（来自 MCP roots/list 或 tool 参数 workspaceRoot）。
  */
-function getProjectRootDynamic(): string {
-  return findProjectRoot();
+export function setClientProjectRoot(path: string | null): void {
+  clientProjectRoot = path ? (path.trim() || null) : null;
 }
 
 /**
- * 默认配置（使用动态获取的项目根目录）
+ * 获取工作区根目录。仅使用已设置的 clientProjectRoot（WORKSPACE_ROOT_PARAM / Roots），未设置时回退 process.cwd()。
+ */
+function getWorkspaceRootInternal(): string {
+  if (clientProjectRoot && existsSync(clientProjectRoot)) {
+    return clientProjectRoot;
+  }
+  return process.cwd();
+}
+
+/**
+ * 默认配置（使用工作区根目录，由 WORKSPACE_ROOT_PARAM / Roots 设置）
  */
 function getDefaultConfig(): ServerConfig {
-  const projectRoot = getProjectRootDynamic();
+  const projectRoot = getWorkspaceRootInternal();
   return {
     port: 7979, // 使用不常用的端口，避免与其他服务冲突
     rulesPath: join(projectRoot, '_mock-rules', 'rules.json'),
@@ -150,7 +73,7 @@ function getMockServeRoot(): string {
  * 这样在 MCP 运行时 cwd 不是工作区根目录时，仍能读到包内的配置文件
  */
 export function loadConfig(): ServerConfig {
-  const projectRoot = getProjectRootDynamic();
+  const projectRoot = getWorkspaceRootInternal();
   const mockServeRoot = getMockServeRoot();
   const defaultConfig = getDefaultConfig();
 
@@ -259,10 +182,11 @@ export function getConfig(): ServerConfig {
 }
 
 /**
- * 导出项目根目录（供其他模块使用，动态获取）
+ * 获取工作区根目录（供其他模块使用）。
+ * 仅由 MCP Roots 或 tool 参数 workspaceRoot（WORKSPACE_ROOT_PARAM）设置，未设置时回退 process.cwd()。
  */
-export function getProjectRoot(): string {
-  return getProjectRootDynamic();
+export function getWorkspaceRoot(): string {
+  return getWorkspaceRootInternal();
 }
 
 /**

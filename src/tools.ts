@@ -7,6 +7,14 @@ import { generateCharlesXMLConfigFile } from './charles.js';
 
 const rulesManager = getRulesManager();
 
+/** 所有工具共有的可选参数：由大模型传入用户工作区目录，用于准确解析项目根 */
+const WORKSPACE_ROOT_PARAM = {
+  workspaceRoot: {
+    type: 'string' as const,
+    description: '用户代码的工作区目录（当前 Cursor 打开的项目根路径）。传入后作为 Mock 规则与配置文件的项目根使用；若不传则使用自动推断的项目根。',
+  },
+};
+
 /**
  * 添加 Mock 规则工具
  */
@@ -28,7 +36,7 @@ export const addMockRuleTool: Tool = {
       },
       response: {
         type: 'object',
-        description: 'JSON 格式的响应数据',
+        description: 'JSON 格式的响应数据。若含深层嵌套，建议以 JSON 字符串传入，避免被序列化为 [Object]。',
       },
       statusCode: {
         type: 'number',
@@ -46,6 +54,7 @@ export const addMockRuleTool: Tool = {
         type: 'number',
         description: '响应延迟（毫秒），可选',
       },
+      ...WORKSPACE_ROOT_PARAM,
     },
     required: ['url', 'response'],
   },
@@ -71,8 +80,9 @@ export const removeMockRuleTool: Tool = {
       method: {
         type: 'string',
         description: 'HTTP 方法',
-        enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+        enum: ['POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
       },
+      ...WORKSPACE_ROOT_PARAM,
     },
     required: [],
   },
@@ -86,7 +96,7 @@ export const listMockRulesTool: Tool = {
   description: '列出所有已配置的 Mock 规则',
   inputSchema: {
     type: 'object',
-    properties: {},
+    properties: { ...WORKSPACE_ROOT_PARAM },
   },
 };
 
@@ -103,6 +113,7 @@ export const toggleMockTool: Tool = {
         type: 'boolean',
         description: '是否启用 Mock 功能',
       },
+      ...WORKSPACE_ROOT_PARAM,
     },
     required: ['enabled'],
   },
@@ -122,6 +133,7 @@ export const getRequestLogsTool: Tool = {
         description: '返回的日志条数，默认为 100',
         default: 100,
       },
+      ...WORKSPACE_ROOT_PARAM,
     },
   },
 };
@@ -149,6 +161,7 @@ export const generateCharlesConfigTool: Tool = {
         type: 'number',
         description: '目标 API 端口（可选），默认从配置或 443',
       },
+      ...WORKSPACE_ROOT_PARAM,
     },
     required: [],
   },
@@ -162,7 +175,7 @@ export const reloadRulesTool: Tool = {
   description: '重新从文件加载 Mock 规则（当手动修改 rules.json 文件后使用）',
   inputSchema: {
     type: 'object',
-    properties: {},
+    properties: { ...WORKSPACE_ROOT_PARAM },
   },
 };
 
@@ -180,14 +193,29 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
       delay,
     } = args;
 
-    if (!url || !response) {
+    if (!url || response === undefined || response === null) {
       throw new Error('url 和 response 是必需的参数');
     }
 
-    const rule = rulesManager.addRule({
+    // 规范化 response：支持传入 JSON 字符串，并深拷贝为纯对象，避免嵌套字段（如 chatRecordlist）被序列化成 [Object]
+    let responseObj: any;
+    if (typeof response === 'string') {
+      try {
+        responseObj = JSON.parse(response);
+      } catch {
+        throw new Error('response 为字符串时必须是合法 JSON');
+      }
+    } else {
+      responseObj = response;
+    }
+    responseObj = JSON.parse(JSON.stringify(responseObj));
+
+    const methodUpper = method.toUpperCase();
+    const existed = rulesManager.getRuleByUrlAndMethod(url, methodUpper);
+    const rule = rulesManager.addOrUpdateRule({
       url,
-      method: method.toUpperCase(),
-      response,
+      method: methodUpper,
+      response: responseObj,
       statusCode,
       headers,
       delay,
@@ -198,7 +226,7 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
     // 用户需要使用 generate_charles_config 工具手动生成
     return {
       success: true,
-      message: `Mock 规则已添加：${method} ${url}`,
+      message: existed ? `Mock 规则已更新（同接口覆盖）：${methodUpper} ${url}` : `Mock 规则已添加：${methodUpper} ${url}`,
       rule: {
         id: rule.id,
         url: rule.url,
@@ -273,15 +301,15 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   toggle_mock: async (args: any) => {
     const { enabled } = args;
     const config = getConfig();
-    
+
     // 更新配置（这里简化处理，实际应该持久化配置）
     (config as any).mockEnabled = enabled;
-    
+
     // 可以保存到配置文件
     try {
-      const { getProjectRoot } = await import('./config.js');
+      const { getWorkspaceRoot } = await import('./config.js');
       const { join } = await import('path');
-      const projectRoot = getProjectRoot();
+      const projectRoot = getWorkspaceRoot();
       const configPath = join(projectRoot, 'miMockServerConfig.json');
       writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
     } catch (error) {

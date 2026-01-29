@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getRulesManager } from './rules.js';
+import { getRulesManager, reloadRules } from './rules.js';
 import { getConfig } from './config.js';
 import { RequestLog } from './types.js';
 import { randomUUID } from 'crypto';
@@ -106,13 +106,17 @@ export function createProxyServer() {
 
   // 处理所有请求
   app.use(async (req: Request, res: Response, next: NextFunction) => {
-    // 检查全局 Mock 开关
-    if (!config.mockEnabled) {
+    // 每次请求时使用当前配置（含当前工作区根），确保与 tool 创建规则时用的 _mock-rules 一致
+    const currentConfig = getConfig();
+    if (!currentConfig.mockEnabled) {
       return next();
     }
 
-    // 每次请求时重新获取规则管理器（确保使用最新实例）
     const currentRulesManager = getRulesManager();
+    // 若当前配置的 rulesPath 与 RulesManager 不一致（如 workspaceRoot 刚被 MCP Roots 设置），则重载规则，从项目目录 _mock-rules 读取
+    if (currentRulesManager.getRulesPath() !== currentConfig.rulesPath) {
+      reloadRules();
+    }
     
     // 调试信息：记录请求路径和方法
     const allRules = currentRulesManager.getAllRules();

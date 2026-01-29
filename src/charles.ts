@@ -1,7 +1,7 @@
 import { MockRule } from './types.js';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { getProjectRoot } from './config.js';
+import { getWorkspaceRoot } from './config.js';
 
 /**
  * Charles Map Remote 配置项
@@ -183,7 +183,7 @@ export function generateCharlesXMLConfigFile(
 ): string {
   const xml = generateCharlesXMLConfig(rules, mockServerPort, targetDomain, targetPort);
   // 如果指定了输出目录，使用指定目录；否则使用 _mock-rules 目录
-  const configDir = outputDir || join(getProjectRoot(), '_mock-rules');
+  const configDir = outputDir || join(getWorkspaceRoot(), '_mock-rules');
   
   // 确保目录存在
   if (!existsSync(configDir)) {
