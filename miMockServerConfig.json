@@ -1,0 +1,8 @@
+{
+  "port": 7979,
+  "rulesPath": "_mock-rules/rules.json",
+  "enableLogging": true,
+  "maxLogs": 1000,
+  "mockEnabled": true
+}
+

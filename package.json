@@ -1,0 +1,37 @@
+{
+  "name": "mcp-mock-server",
+  "version": "1.0.0",
+  "description": "MCP Mock Server for React Native with Charles proxy support",
+  "main": "dist/server.js",
+  "bin": {
+    "mcp-mock-server": "./dist/server.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "mcp",
+    "mock",
+    "server",
+    "react-native",
+    "charles"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.6",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
