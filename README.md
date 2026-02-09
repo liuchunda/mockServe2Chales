@@ -1,6 +1,6 @@
 # MCP Mock Server
 
-一个基于 MCP (Model Context Protocol) 的 Mock 服务器，专为 React Native 应用设计，支持通过 Charles 代理实现零代码侵入的数据 Mock。
+一个基于 MCP (Model Context Protocol) 的 Mock 服务器，专为 移动端 应用设计，支持通过 Charles 代理实现零代码侵入的数据 Mock。
 
 ## 特性
 
@@ -19,11 +19,11 @@ React Native App → Charles Proxy → MCP Mock Server → 真实API或返回Moc
 
 ## 安装
 
-### 方式一：作为 npm 包使用（推荐）
+### 作为 npm 包使用（推荐）
 
 无需克隆仓库，通过 npx 直接运行，适合在 Cursor 中作为 MCP 服务使用：
 
-1. **在 Cursor 中配置 MCP**  
+1. **在 Cursor或者大模型编辑器 中配置 MCP**  
    编辑 `~/.cursor/mcp.json`（或 Cursor 设置中的 MCP 配置），添加：
 
 ```json
@@ -39,40 +39,24 @@ React Native App → Charles Proxy → MCP Mock Server → 真实API或返回Moc
 
 `-y` 会在首次运行时自动同意安装包。配置完成后重启 Cursor 或重新加载 MCP，即可使用。
 
-2. **配置文件位置**  
-   以 npm 包方式运行时，工作目录一般为 Cursor 打开的项目根目录。请在该项目根目录下放置 `miMockServerConfig.json`（可选），或使用默认配置。
-
-### 方式二：本地开发 / 克隆仓库
-
-```bash
-# 安装依赖
-npm install
-
-# 构建项目
-npm run build
-
-# 启动服务
-npm start
-
-# 开发模式（使用 tsx）
-npm run dev
-```
-
-**发布为 npm 包**：在项目根目录执行 `npm publish` 前会自动执行 `npm run build`，仅会发布 `dist` 与 `README.md`。
 
 ## 配置
 
 ### 基本配置
 
-在**项目根目录**或 mockServe 目录下创建 `miMockServerConfig.json` 文件（可选，有默认配置）：
+在**项目根目录**目录下创建 `miMockServerConfig.json` 文件：
 
 ```json
 {
-  "port": 7979,
-  "rulesPath": "./.mock-rules/rules.json",
+  "rulesPath": "_mock-rules/rules.json",//接口数据存储位置，可以通过gitignore进行文件夹忽略
   "enableLogging": true,
   "maxLogs": 1000,
-  "mockEnabled": true
+  "mockEnabled": true,
+  "charlesTargetDomains": [
+    "proretail-app.test.api.xiaominr.com",//自动生成charlse文件映射时的域名
+    "proretail-app.pre.api.xiaominr.com"
+  ],
+  "charlesTargetPort": 443//自动生成charlse文件映射时的端口
 }
 ```
 
@@ -81,22 +65,6 @@ npm run dev
 - 如果端口被占用，服务会**自动关闭占用该端口的进程**并重启
 - 如果无法关闭占用进程，会自动查找并使用其他可用端口
 - 启动时会显示实际使用的端口号，请根据提示更新 Charles 配置
-
-### MCP 客户端配置（Cursor）
-
-- **通过 npm 包使用**：见上方「方式一：作为 npm 包使用」，在 `~/.cursor/mcp.json` 中配置 `npx -y mockserver-mcp-charles` 即可。
-- **本地克隆方式**：在 Cursor 的 MCP 配置中指定本地入口（`type` 可不填，本服务使用 stdio，Cursor 会自动识别）：
-
-```json
-{
-  "mcpServers": {
-    "mockserver-mcp-charles": {
-      "command": "node",
-      "args": ["/path/to/mockServe/dist/server.js"]
-    }
-  }
-}
-```
 
 ## Charles 配置详细步骤
 
@@ -166,21 +134,15 @@ npm run dev
 在 Cursor 中，你可以直接使用自然语言创建 Mock 接口：
 
 ```
-"为接口 /api/user/info 创建一个 Mock，返回以下数据：
+"添加一个POST接口 /api/user/info 创建一个 Mock，返回以下数据：
 {
-  "id": 1,
-  "name": "张三",
-  "email": "zhangsan@example.com"
-}"
-```
-
-或者：
-
-```
-"添加一个 POST /api/login 接口，状态码 200，返回：
-{
-  "token": "abc123",
-  "expires": 3600
+  "code":0,
+  "data":{
+    "id": 1,
+    "name": "张三",
+    "email": "zhangsan@example.com"
+  },
+  "message":"ok"
 }"
 ```
 
@@ -191,11 +153,11 @@ MCP 服务会：
 4. **自动生成 Charles 配置文件**（无需手动配置）
 5. RN 应用下次请求该接口时自动返回 Mock 数据
 
-### 自动生成 Charles 配置
+### 自动生成 Charles 配置，或者主动调用，在编辑器对话框进行调用
+  "生成charles映射文件"
 
 每次添加 Mock 规则后，系统会自动生成 Charles 配置文件：
-- **JSON 格式**: `charles-config/map-remote.json`
-- **XML 格式**: `charles-config/map-remote.xml`（推荐使用）
+- **XML 格式**: `charles-config/map-remote.xml`
 
 **导入步骤**：
 1. 打开 Charles
@@ -226,8 +188,13 @@ MCP 服务会：
   "url": "/api/user/info",
   "method": "GET",
   "response": {
-    "id": 1,
-    "name": "张三"
+    "code":0,
+    "data":{
+      "id": 1,
+      "name": "张三",
+      "email": "zhangsan@example.com"
+    },
+    "message":"ok"
   },
   "statusCode": 200,
   "delay": 100

@@ -1,5 +1,5 @@
 import { MockRule, MockRulesData, RuleMatchResult } from './types.js';
-import { readFileSync, writeFileSync, existsSync, watchFile, unwatchFile, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, watchFile, unwatchFile, mkdirSync, statSync } from 'fs';
 import { dirname } from 'path';
 import { getConfig, ensureRulesDirectory } from './config.js';
 import { randomUUID } from 'crypto';
@@ -13,6 +13,8 @@ export class RulesManager {
   private rulesPath: string;
   private fileWatcher: any = null;
   private reloadTimeout: NodeJS.Timeout | null = null;
+  /** 上次从磁盘加载时的文件 mtimeMs，用于请求前检测文件是否被外部修改 */
+  private lastLoadMtimeMs: number = 0;
 
   constructor() {
     this.rulesPath = getConfig().rulesPath;
@@ -65,14 +67,22 @@ export class RulesManager {
    * 从文件加载规则
    */
   private loadRules(): void {
-    // 重新获取配置，确保路径是最新的
-    this.rulesPath = getConfig().rulesPath;
-    
+    const newPath = getConfig().rulesPath;
+    const pathChanged = newPath !== this.rulesPath;
+    this.rulesPath = newPath;
+
+    // 路径变化时重启监听，确保监听的是当前 rules.json
+    if (pathChanged) {
+      this.stopFileWatcher();
+    }
+
     // 确保目录存在
     ensureRulesDirectory(this.rulesPath);
-    
+
     if (!existsSync(this.rulesPath)) {
-      // 创建默认规则文件
+      if (pathChanged) {
+        this.startFileWatcher();
+      }
       const defaultData: MockRulesData = {
         rules: [],
         version: '1.0.0',
@@ -84,19 +94,42 @@ export class RulesManager {
     try {
       const content = readFileSync(this.rulesPath, 'utf-8');
       const data: MockRulesData = JSON.parse(content);
-      
-      // 加载规则到内存
+
       this.rules.clear();
       for (const rule of data.rules) {
         if (rule.enabled) {
           this.rules.set(rule.id, rule);
         }
       }
-      
+
+      try {
+        this.lastLoadMtimeMs = statSync(this.rulesPath).mtimeMs;
+      } catch {
+        this.lastLoadMtimeMs = 0;
+      }
       console.error(`Rules loaded from: ${this.rulesPath}, total: ${this.rules.size} rules`);
     } catch (error) {
       console.error('Failed to load rules:', error);
       this.rules.clear();
+    }
+
+    if (pathChanged) {
+      this.startFileWatcher();
+    }
+  }
+
+  /**
+   * 磁盘上的 rules.json 是否比上次加载时更新（外部修改了文件需重载）
+   * 部分编辑器原子写入会导致 watchFile 不触发，请求前用此兜底
+   */
+  isFileNewerThanLoad(): boolean {
+    if (!this.rulesPath || !existsSync(this.rulesPath)) {
+      return false;
+    }
+    try {
+      return statSync(this.rulesPath).mtimeMs > this.lastLoadMtimeMs;
+    } catch {
+      return false;
     }
   }
 
@@ -127,9 +160,13 @@ export class RulesManager {
    */
   private saveRulesToFile(data: MockRulesData): void {
     try {
-      // 确保目录存在
       ensureRulesDirectory(this.rulesPath);
       writeFileSync(this.rulesPath, JSON.stringify(data, null, 2), 'utf-8');
+      try {
+        this.lastLoadMtimeMs = statSync(this.rulesPath).mtimeMs;
+      } catch {
+        // 忽略
+      }
     } catch (error) {
       console.error('Failed to save rules:', error);
       throw error;

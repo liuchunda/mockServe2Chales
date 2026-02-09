@@ -113,11 +113,14 @@ export function createProxyServer() {
     }
 
     const currentRulesManager = getRulesManager();
-    // 若当前配置的 rulesPath 与 RulesManager 不一致（如 workspaceRoot 刚被 MCP Roots 设置），则重载规则，从项目目录 _mock-rules 读取
+    // 路径不一致时重载（如 workspaceRoot 刚被设置）
     if (currentRulesManager.getRulesPath() !== currentConfig.rulesPath) {
       reloadRules();
+    } else if (currentRulesManager.isFileNewerThanLoad()) {
+      // 手动修改 rules.json 后，按 mtime 检测并重载，无需重启服务
+      reloadRules();
     }
-    
+
     // 调试信息：记录请求路径和方法
     const allRules = currentRulesManager.getAllRules();
     console.error(`[Mock] Request: ${req.method} ${req.path}, Total rules: ${allRules.length}`);
