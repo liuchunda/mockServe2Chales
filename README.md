@@ -157,13 +157,13 @@ MCP 服务会：
   "生成charles映射文件"
 
 每次添加 Mock 规则后，系统会自动生成 Charles 配置文件：
-- **XML 格式**: `charles-config/map-remote.xml`
+- **仅 XML 格式**: `_mock-rules/map-remote.xml`（Charles 可直接导入，不生成 JSON）
 
 **导入步骤**：
 1. 打开 Charles
 2. 菜单：`Tools` → `Map Remote...`
 3. 点击 `Import Settings` 按钮
-4. 选择生成的 XML 文件（`charles-config/map-remote.xml`）
+4. 选择生成的 XML 文件（`_mock-rules/map-remote.xml`）
 5. 确认导入后，规则会自动生效
 
 **注意**：如果端口被自动调整（如从 7979 变为 3001），配置文件会自动使用新的端口号。
@@ -320,11 +320,9 @@ mockServe/
 │   ├── config.ts          # 配置管理
 │   ├── charles.ts         # Charles 配置生成
 │   └── types.ts           # TypeScript 类型定义
-├── .mock-rules/           # Mock 规则存储目录（隐藏目录）
-│   └── rules.json         # 规则文件
-├── charles-config/        # Charles 配置文件目录（自动生成）
-│   ├── map-remote.json    # JSON 格式配置
-│   └── map-remote.xml     # XML 格式配置（推荐）
+├── _mock-rules/           # Mock 规则与 Charles 映射目录
+│   ├── rules.json         # 规则文件
+│   └── map-remote.xml     # Charles Map Remote 配置（仅 XML）
 ├── package.json
 ├── tsconfig.json
 └── README.md

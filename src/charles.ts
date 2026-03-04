@@ -172,7 +172,8 @@ export function generateCharlesXMLConfig(
 }
 
 /**
- * 生成 Charles XML 配置文件
+ * 生成 Charles Map Remote 配置文件（仅 XML 格式）。
+ * 只写入 map-remote.xml，不生成 JSON；Charles 需使用 XML 导入。
  */
 export function generateCharlesXMLConfigFile(
   rules: MockRule[],
@@ -182,10 +183,8 @@ export function generateCharlesXMLConfigFile(
   outputDir?: string
 ): string {
   const xml = generateCharlesXMLConfig(rules, mockServerPort, targetDomain, targetPort);
-  // 如果指定了输出目录，使用指定目录；否则使用 _mock-rules 目录
   const configDir = outputDir || join(getWorkspaceRoot(), '_mock-rules');
-  
-  // 确保目录存在
+
   if (!existsSync(configDir)) {
     mkdirSync(configDir, { recursive: true });
   }

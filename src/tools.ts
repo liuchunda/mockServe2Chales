@@ -11,7 +11,7 @@ const rulesManager = getRulesManager();
 const WORKSPACE_ROOT_PARAM = {
   workspaceRoot: {
     type: 'string' as const,
-    description: '用户代码的工作区目录（当前 Cursor 打开的项目根路径）。传入后作为 Mock 规则与配置文件的项目根使用；若不传则使用自动推断的项目根。',
+    description: '用户代码的工作区目录（当前 Cursor 打开的项目根路径）。',
   },
 };
 
@@ -20,7 +20,7 @@ const WORKSPACE_ROOT_PARAM = {
  */
 export const addMockRuleTool: Tool = {
   name: 'add_mock_rule',
-  description: '添加一个新的 Mock 规则。在 Cursor 中输入接口路径和 JSON 数据即可创建 Mock 接口。',
+  description: '添加一个新的 Mock 规则，帮我Mock一个接口，当用户说「mock接口」「mock一个接口」「添加mock规则」「mock一个API接口」时，应调用此 MCP 工具。在 Cursor 中输入接口路径和 JSON 数据即可创建 Mock 接口。',
   inputSchema: {
     type: 'object',
     properties: {
@@ -184,6 +184,11 @@ export const reloadRulesTool: Tool = {
  */
 export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   add_mock_rule: async (args: any) => {
+    // 确保规则写入项目中的 _mock-rules/rules.json（与 miMockServerConfig.json 的 rulesPath 一致）
+    if (getConfig().rulesPath !== rulesManager.getRulesPath()) {
+      reloadRules();
+    }
+
     const {
       url,
       method = 'GET',
@@ -249,6 +254,11 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   },
 
   remove_mock_rule: async (args: any) => {
+    // 确保操作的是项目中的 _mock-rules/rules.json
+    if (getConfig().rulesPath !== rulesManager.getRulesPath()) {
+      reloadRules();
+    }
+
     const { id, url, method } = args;
 
     if (id) {

@@ -174,15 +174,21 @@ export class RulesManager {
   }
 
   /**
-   * 持久化所有规则
+   * 持久化所有规则到 miMockServerConfig.json 中 rulesPath 指向的文件（项目 _mock-rules/rules.json）
    */
   private persistRules(): void {
+    const currentPath = getConfig().rulesPath;
+    if (currentPath !== this.rulesPath) {
+      this.stopFileWatcher();
+      this.rulesPath = currentPath;
+      this.startFileWatcher();
+    }
     const data: MockRulesData = {
       rules: Array.from(this.rules.values()),
       version: '1.0.0',
     };
     this.saveRulesToFile(data);
-    
+
     // 自动生成 Charles 配置文件
     this.generateCharlesConfig();
   }
