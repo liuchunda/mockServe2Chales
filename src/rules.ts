@@ -1,7 +1,7 @@
 import { MockRule, MockRulesData, RuleMatchResult } from './types.js';
 import { readFileSync, writeFileSync, existsSync, watchFile, unwatchFile, mkdirSync, statSync } from 'fs';
 import { dirname } from 'path';
-import { getConfig, ensureRulesDirectory, getActualProxyPort } from './config.js';
+import { getConfig, ensureRulesDirectory, getEffectiveProxyPortForCharles } from './config.js';
 import { randomUUID } from 'crypto';
 import { generateCharlesXMLConfigFile } from './charles.js';
 
@@ -222,7 +222,7 @@ export class RulesManager {
         );
       }
       const port = targetPort ?? 443;
-      const mockServerPort = getActualProxyPort() ?? config.port ?? 7979;
+      const mockServerPort = getEffectiveProxyPortForCharles();
       const rulesDir = dirname(this.rulesPath);
       generateCharlesXMLConfigFile(rules, mockServerPort, domains, port, rulesDir);
       console.error(`Charles 配置文件已自动生成到: ${rulesDir}（${domains.length} 个域名）`);

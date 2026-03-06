@@ -1,8 +1,7 @@
 {
-  "port": 7979,
   "rulesPath": "_mock-rules/rules.json",
-  "enableLogging": true,
-  "maxLogs": 1000,
-  "mockEnabled": true
+  "charlesTargetDomains": [
+    "proretail-app.test.api.xiaominr.com",
+    "proretail-app.pre.api.xiaominr.com"
+  ]
 }
-

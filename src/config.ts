@@ -1,5 +1,5 @@
 import { ServerConfig } from './types.js';
-import { readFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { createServer } from 'net';
@@ -202,6 +202,58 @@ export function setActualProxyPort(port: number): void {
 /** 返回当前进程实际监听的代理端口，未启动时返回 null */
 export function getActualProxyPort(): number | null {
   return _actualProxyPort;
+}
+
+const ACTUAL_PROXY_PORT_FILENAME = '.actual-proxy-port';
+
+/**
+ * 获取「实际代理端口」状态文件路径（位于项目 _mock-rules 目录下）
+ */
+function getActualProxyPortFilePath(rulesPath: string): string {
+  return join(dirname(rulesPath), ACTUAL_PROXY_PORT_FILENAME);
+}
+
+/**
+ * 将当前实际代理端口写入项目 _mock-rules 目录，供生成 Charles 配置时读取（含跨进程场景）
+ */
+export function writeActualProxyPortFile(port: number): void {
+  const config = loadConfig();
+  ensureRulesDirectory(config.rulesPath);
+  const filePath = getActualProxyPortFilePath(config.rulesPath);
+  try {
+    writeFileSync(filePath, String(port), 'utf-8');
+  } catch {
+    // 忽略写入失败（如只读目录）
+  }
+}
+
+/**
+ * 从项目 _mock-rules 目录读取已保存的实际代理端口（用于生成 Charles 时与当前进程不一致的情况）
+ * @param workspaceRoot 工作区根目录，不传则用 getWorkspaceRoot()
+ */
+export function readActualProxyPortFromFile(workspaceRoot?: string): number | null {
+  const root = workspaceRoot ?? getWorkspaceRootInternal();
+  const filePath = join(root, '_mock-rules', ACTUAL_PROXY_PORT_FILENAME);
+  if (!existsSync(filePath)) return null;
+  try {
+    const s = readFileSync(filePath, 'utf-8').trim();
+    const port = parseInt(s, 10);
+    return Number.isInteger(port) && port > 0 && port < 65536 ? port : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 生成 Charles 映射时使用的「有效代理端口」：当前进程实际端口 → 项目内保存的端口文件 → 配置端口 → 7979
+ */
+export function getEffectiveProxyPortForCharles(workspaceRoot?: string): number {
+  const inProcess = getActualProxyPort();
+  if (inProcess != null) return inProcess;
+  const fromFile = readActualProxyPortFromFile(workspaceRoot ?? getWorkspaceRootInternal());
+  if (fromFile != null) return fromFile;
+  const config = loadConfig();
+  return config.port ?? 7979;
 }
 
 /**

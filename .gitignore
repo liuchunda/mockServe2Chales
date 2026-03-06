@@ -5,4 +5,6 @@ dist/
 .env
 .mock-rules/*.json
 !.mock-rules/rules.json.example
+.mock-rules/.actual-proxy-port
+_mock-rules/.actual-proxy-port
 .mock-server.pid

@@ -13,7 +13,7 @@ import {
   findAvailablePort,
   setClientProjectRoot,
   setActualProxyPort,
-  getActualProxyPort,
+  writeActualProxyPortFile,
 } from './config.js';
 import {
   addMockRuleTool,
@@ -131,10 +131,15 @@ async function main() {
     console.error(`[mockserver] 无法找到可用端口（${config.port}~${config.port + 49} 均已占用），HTTP 代理将不启动，MCP 工具仍可用`);
   }
 
+  // 一旦确定实际端口即写入内存并落盘，供生成 Charles 映射时使用（避免依赖 listen 回调时机或跨进程拿不到端口）
+  if (actualPort !== null) {
+    setActualProxyPort(actualPort);
+    writeActualProxyPortFile(actualPort);
+  }
+
   // 绑定 127.0.0.1 而非 0.0.0.0，避免部分环境 EPERM（如 Cursor 启动 MCP 时）
   const httpServer = actualPort !== null
     ? proxyApp.listen(actualPort, '127.0.0.1', () => {
-        setActualProxyPort(actualPort!);
         console.error(`[mockserver] HTTP 代理已启动`);
         console.error(`[mockserver] 代理地址: http://127.0.0.1:${actualPort}`);
         console.error(`[mockserver] 规则目录: ${config.rulesPath}`);

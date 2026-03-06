@@ -1,7 +1,7 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { getRulesManager, reloadRules } from './rules.js';
 import { getRequestLogManager } from './proxy.js';
-import { getConfig, getActualProxyPort } from './config.js';
+import { getConfig, getEffectiveProxyPortForCharles } from './config.js';
 import { writeFileSync } from 'fs';
 import { generateCharlesXMLConfigFile } from './charles.js';
 
@@ -144,7 +144,7 @@ export const getRequestLogsTool: Tool = {
  */
 export const generateCharlesConfigTool: Tool = {
   name: 'generate_charles_config',
-  description: '生成 Charles 映射文件（Charles Map Remote 配置，输出 map-remote.xml）。当用户说「生成 Charles 映射」「生成 Charles 映射文件」「生成 Charles 配置」「导出 Charles 配置」时，应调用此 MCP 工具。域名与端口可从项目根 miMockServerConfig.json 的 charlesTargetDomains、charlesTargetPort 读取，也可通过参数传入。',
+  description: '生成 Charles 映射文件（Charles Map Remote 配置，输出 map-remote.xml）。当用户说「生成Charles Map Remote」「帮我重新生成映射文件」「帮我生成映射文件」「生成 Charles 映射文件」「生成映射文件」「Charles 映射文件」「更新映射文件配置」「导出 Charles 配置」时，应调用此 MCP 工具。域名与端口可从项目根 miMockServerConfig.json 的 charlesTargetDomains、charlesTargetPort 读取，也可通过参数传入。',
   inputSchema: {
     type: 'object',
     properties: {
@@ -371,7 +371,10 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
     const rules = rulesManager.getAllRules();
     const { dirname } = await import('path');
     const rulesDir = dirname(config.rulesPath);
-    const xmlPath = generateCharlesXMLConfigFile(rules, config.port, domains, port, rulesDir);
+    // 以当前实际启动的代理端口为准：内存 → 项目内 .actual-proxy-port 文件 → 配置端口
+    const workspaceRootForPort = (args?.workspaceRoot && typeof args.workspaceRoot === 'string') ? args.workspaceRoot.trim() : undefined;
+    const mockServerPort = getEffectiveProxyPortForCharles(workspaceRootForPort);
+    const xmlPath = generateCharlesXMLConfigFile(rules, mockServerPort, domains, port, rulesDir);
     return {
       success: true,
       message: `Charles 配置文件已生成（${Array.isArray(domains) ? domains.length : 1} 个域名，同时支持 http 和 https）`,
@@ -379,7 +382,7 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
       config: {
         targetDomains: Array.isArray(domains) ? domains : [domains],
         targetPort: port,
-        mockServerPort: getActualProxyPort() ?? config.port,
+        mockServerPort,
         rulesCount: rules.length,
       },
       importSteps: [
