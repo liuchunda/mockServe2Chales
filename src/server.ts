@@ -10,10 +10,10 @@ import { createProxyServer } from './proxy.js';
 import { fileURLToPath } from 'url';
 import { 
   getConfig, 
-  isPortAvailable, 
   findAvailablePort,
-  killProcessByPort,
   setClientProjectRoot,
+  setActualProxyPort,
+  getActualProxyPort,
 } from './config.js';
 import {
   addMockRuleTool,
@@ -32,20 +32,6 @@ import { getRulesManager, reloadRules } from './rules.js';
  */
 async function main() {
   const config = getConfig();
-  
-  // 若配置端口被占用，尝试关闭占用进程后继续（不依赖 PID 文件，避免重启 Cursor 误报）
-  try {
-    const available = await isPortAvailable(config.port);
-    if (!available) {
-      console.error(`端口 ${config.port} 被占用，尝试关闭占用进程...`);
-      const killed = await killProcessByPort(config.port);
-      if (killed) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-      }
-    }
-  } catch (error) {
-    console.error(`端口检查失败: ${error instanceof Error ? error.message : String(error)}`);
-  }
 
   // 初始化 MCP 服务器
   const server = new Server(
@@ -136,70 +122,37 @@ async function main() {
   });
 
   // 启动 HTTP 代理服务器
+  // 直接从配置端口开始寻找可用端口，不杀已有进程（支持同一台机器多个项目同时运行各自的 MCP）
   const proxyApp = createProxyServer();
-  
-  // 检查端口是否可用，不可用时尝试关闭占用进程或换端口
-  let actualPort = config.port;
+  let actualPort: number | null = null;
   try {
-    const available = await isPortAvailable(config.port);
-    if (!available) {
-      console.error(`端口 ${config.port} 已被占用，尝试关闭占用进程...`);
-      const killed = await killProcessByPort(config.port);
-      if (killed) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        actualPort = await findAvailablePort(config.port);
-        console.error(`无法关闭占用进程，已自动选择端口 ${actualPort}`);
-      }
-    }
-  } catch (error) {
-    console.error(`端口检查失败: ${error instanceof Error ? error.message : String(error)}`);
+    actualPort = await findAvailablePort(config.port, 50);
+  } catch {
+    console.error(`[mockserver] 无法找到可用端口（${config.port}~${config.port + 49} 均已占用），HTTP 代理将不启动，MCP 工具仍可用`);
   }
 
   // 绑定 127.0.0.1 而非 0.0.0.0，避免部分环境 EPERM（如 Cursor 启动 MCP 时）
-  const httpServer = proxyApp.listen(actualPort, '127.0.0.1', () => {
-    console.error(`HTTP Proxy Server started on port ${actualPort}`);
-    console.error(`Mock rules path: ${config.rulesPath}`);
-    if (actualPort !== config.port) {
-      console.error(`注意: 配置的端口 ${config.port} 被占用，已使用端口 ${actualPort}`);
-      console.error(`请更新 Charles 配置或 mockServe/miMockServerConfig.json 中的端口号为 ${actualPort}`);
-    }
-  });
-
-  // 处理监听错误：EPERM/无权限时不退出进程，MCP 工具仍可用
-  httpServer.on('error', async (error: any) => {
-    if (error.code === 'EPERM' || error.code === 'EACCES') {
-      console.error(`HTTP 代理无法绑定端口（无权限），MCP 工具仍可用: ${error.message}`);
-      return;
-    }
-    if (error.code === 'EADDRINUSE') {
-      console.error(`端口 ${actualPort} 被占用，尝试关闭占用进程...`);
-
-      const killed = await killProcessByPort(actualPort);
-
-      if (killed) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        httpServer.close();
-        proxyApp.listen(actualPort, '127.0.0.1', () => {
-          console.error(`HTTP Proxy Server started on port ${actualPort}`);
-          console.error(`Mock rules path: ${config.rulesPath}`);
-        });
-      } else {
-        console.error(`无法关闭占用端口的进程，尝试使用其他端口...`);
-        try {
-          const newPort = await findAvailablePort(actualPort + 1, 10);
-          httpServer.close();
-          proxyApp.listen(newPort, '127.0.0.1', () => {
-            console.error(`HTTP Proxy Server started on port ${newPort}`);
-            console.error(`Mock rules path: ${config.rulesPath}`);
-            console.error(`请更新 Charles 配置或 mockServe/miMockServerConfig.json 中的端口号为 ${newPort}`);
-          });
-        } catch (err) {
-          console.error('HTTP 代理无法启动（端口不可用），MCP 工具仍可用:', err);
+  const httpServer = actualPort !== null
+    ? proxyApp.listen(actualPort, '127.0.0.1', () => {
+        setActualProxyPort(actualPort!);
+        console.error(`[mockserver] HTTP 代理已启动`);
+        console.error(`[mockserver] 代理地址: http://127.0.0.1:${actualPort}`);
+        console.error(`[mockserver] 规则目录: ${config.rulesPath}`);
+        if (actualPort !== config.port) {
+          console.error(`[mockserver] 配置端口 ${config.port} 已被占用，自动切换至 ${actualPort}`);
+          console.error(`[mockserver] 请在 miMockServerConfig.json 中将 port 改为 ${actualPort}，或重新生成 Charles 映射`);
         }
-      }
+      })
+    : null;
+
+  // 处理监听错误：EPERM/EACCES/EADDRINUSE 时不退出进程，MCP 工具仍可用
+  httpServer?.on('error', (error: any) => {
+    if (error.code === 'EPERM' || error.code === 'EACCES') {
+      console.error(`[mockserver] HTTP 代理无法绑定端口（无权限），MCP 工具仍可用: ${error.message}`);
+    } else if (error.code === 'EADDRINUSE') {
+      console.error(`[mockserver] HTTP 代理端口 ${actualPort} 已被占用，MCP 工具仍可用`);
     } else {
-      console.error('HTTP 代理启动失败（MCP 工具仍可用）:', error.message);
+      console.error(`[mockserver] HTTP 代理启动失败（MCP 工具仍可用）: ${error.message}`);
     }
   });
 
@@ -207,25 +160,37 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error('MCP Mock Server started');
+  console.error('[mockserver] MCP Server 已就绪');
+
+  let isShuttingDown = false;
 
   // 优雅关闭
   const shutdown = () => {
-    console.error('Shutting down...');
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.error('[mockserver] 正在关闭...');
     try {
       const rulesManager = getRulesManager();
       if (rulesManager && typeof (rulesManager as any).destroy === 'function') {
         (rulesManager as any).destroy();
       }
-    } catch (error) {
+    } catch {
       // 忽略清理错误
     }
-    if (httpServer.listening) {
+    const forceExitTimer = setTimeout(() => process.exit(0), 3000);
+    forceExitTimer.unref?.();
+    if (httpServer?.listening) {
       httpServer.close(() => process.exit(0));
     } else {
       process.exit(0);
     }
   };
+
+  // 当 Cursor 关闭/编辑器关闭时，stdin/stdout 管道会断开，此时主动退出代理
+  // 同时监听 stdin 和 stdout 的关闭事件，任意一个触发即关闭（双重保险）
+  process.stdin.on('close', shutdown);
+  process.stdin.on('end', shutdown);
+  process.stdout.on('close', shutdown);
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);

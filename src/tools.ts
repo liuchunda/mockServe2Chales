@@ -1,7 +1,7 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { getRulesManager, reloadRules } from './rules.js';
 import { getRequestLogManager } from './proxy.js';
-import { getConfig } from './config.js';
+import { getConfig, getActualProxyPort } from './config.js';
 import { writeFileSync } from 'fs';
 import { generateCharlesXMLConfigFile } from './charles.js';
 
@@ -379,7 +379,7 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
       config: {
         targetDomains: Array.isArray(domains) ? domains : [domains],
         targetPort: port,
-        mockServerPort: config.port,
+        mockServerPort: getActualProxyPort() ?? config.port,
         rulesCount: rules.length,
       },
       importSteps: [

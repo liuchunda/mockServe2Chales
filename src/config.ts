@@ -140,17 +140,17 @@ export function ensureRulesDirectory(rulesPath: string): void {
 }
 
 /**
- * 检查端口是否可用
+ * 检查端口是否可用（在 127.0.0.1 上检测，与实际绑定地址一致，避免 0.0.0.0 vs 127.0.0.1 的误判）
  */
 export function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const server = createServer();
-    
-    server.listen(port, () => {
+
+    server.listen(port, '127.0.0.1', () => {
       server.once('close', () => resolve(true));
       server.close();
     });
-    
+
     server.on('error', () => {
       resolve(false);
     });
@@ -187,6 +187,21 @@ export function getConfig(): ServerConfig {
  */
 export function getWorkspaceRoot(): string {
   return getWorkspaceRootInternal();
+}
+
+/**
+ * 当前进程实际绑定的 HTTP 代理端口（运行时状态，非配置值）。
+ * 由 server.ts 在 listen 成功后写入，供 tools/rules 生成 Charles 配置时使用。
+ */
+let _actualProxyPort: number | null = null;
+
+export function setActualProxyPort(port: number): void {
+  _actualProxyPort = port;
+}
+
+/** 返回当前进程实际监听的代理端口，未启动时返回 null */
+export function getActualProxyPort(): number | null {
+  return _actualProxyPort;
 }
 
 /**
