@@ -1,11 +1,9 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { getRulesManager, reloadRules } from './rules.js';
 import { getRequestLogManager } from './proxy.js';
-import { getConfig, getEffectiveProxyPortForCharles } from './config.js';
+import { getConfig, getEffectiveProxyPortForCharles, checkProjectConfig } from './config.js';
 import { writeFileSync } from 'fs';
 import { generateCharlesXMLConfigFile } from './charles.js';
-
-const rulesManager = getRulesManager();
 
 /** 所有工具共有的可选参数：由大模型传入用户工作区目录，用于准确解析项目根 */
 const WORKSPACE_ROOT_PARAM = {
@@ -184,7 +182,12 @@ export const reloadRulesTool: Tool = {
  */
 export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   add_mock_rule: async (args: any) => {
-    // 确保规则写入项目中的 _mock-rules/rules.json（与 mockCharlesConfig.json 的 rulesPath 一致）
+    const configError = checkProjectConfig();
+    if (configError) {
+      return { success: false, error: configError };
+    }
+
+    const rulesManager = getRulesManager();
     if (getConfig().rulesPath !== rulesManager.getRulesPath()) {
       reloadRules();
     }
@@ -202,7 +205,7 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
       throw new Error('url 和 response 是必需的参数');
     }
 
-    // 规范化 response：支持传入 JSON 字符串，并深拷贝为纯对象，避免嵌套字段（如 chatRecordlist）被序列化成 [Object]
+    // 规范化 response：支持传入 JSON 字符串，并深拷贝为纯对象，避免嵌套字段被序列化成 [Object]
     let responseObj: any;
     if (typeof response === 'string') {
       try {
@@ -227,8 +230,6 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
       enabled: true,
     });
 
-    // 注意：Charles 配置需要目标域名，不会自动生成
-    // 用户需要使用 generate_charles_config 工具手动生成
     return {
       success: true,
       message: existed ? `Mock 规则已更新（同接口覆盖）：${methodUpper} ${url}` : `Mock 规则已添加：${methodUpper} ${url}`,
@@ -240,21 +241,22 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
         enabled: rule.enabled,
       },
       charlesConfigHint: {
-        message: '要生成 Charles 配置文件，请使用 generate_charles_config 工具，并指定 targetDomain 参数',
+        message: '要生成 Charles 配置文件，请使用 generate_charles_config 工具',
         example: {
           tool: 'generate_charles_config',
-          args: {
-            targetDomain: 'api.example.com',
-            targetProtocol: 'https',
-            targetPort: 443,
-          },
+          args: { targetDomain: 'api.example.com', targetPort: 443 },
         },
       },
     };
   },
 
   remove_mock_rule: async (args: any) => {
-    // 确保操作的是项目中的 _mock-rules/rules.json
+    const configError = checkProjectConfig();
+    if (configError) {
+      return { success: false, error: configError };
+    }
+
+    const rulesManager = getRulesManager();
     if (getConfig().rulesPath !== rulesManager.getRulesPath()) {
       reloadRules();
     }
@@ -263,37 +265,26 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
 
     if (id) {
       const removed = rulesManager.removeRule(id);
-      if (removed) {
-        return {
-          success: true,
-          message: `Mock 规则已删除：ID ${id}`,
-        };
-      } else {
-        return {
-          success: false,
-          message: `未找到 ID 为 ${id} 的规则`,
-        };
-      }
+      return removed
+        ? { success: true, message: `Mock 规则已删除：ID ${id}` }
+        : { success: false, message: `未找到 ID 为 ${id} 的规则` };
     } else if (url && method) {
       const removed = rulesManager.removeRuleByUrlAndMethod(url, method);
-      if (removed) {
-        return {
-          success: true,
-          message: `Mock 规则已删除：${method} ${url}`,
-        };
-      } else {
-        return {
-          success: false,
-          message: `未找到规则：${method} ${url}`,
-        };
-      }
+      return removed
+        ? { success: true, message: `Mock 规则已删除：${method} ${url}` }
+        : { success: false, message: `未找到规则：${method} ${url}` };
     } else {
       throw new Error('必须提供 id 或 (url 和 method)');
     }
   },
 
   list_mock_rules: async () => {
-    const rules = rulesManager.getAllRules();
+    const configError = checkProjectConfig();
+    if (configError) {
+      return { success: false, error: configError };
+    }
+
+    const rules = getRulesManager().getAllRules();
     return {
       success: true,
       count: rules.length,
@@ -309,13 +300,15 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   },
 
   toggle_mock: async (args: any) => {
+    const configError = checkProjectConfig();
+    if (configError) {
+      return { success: false, error: configError };
+    }
+
     const { enabled } = args;
     const config = getConfig();
-
-    // 更新配置（这里简化处理，实际应该持久化配置）
     (config as any).mockEnabled = enabled;
 
-    // 可以保存到配置文件
     try {
       const { getWorkspaceRoot } = await import('./config.js');
       const { join } = await import('path');
@@ -354,9 +347,13 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   },
 
   generate_charles_config: async (args: any) => {
+    const configError = checkProjectConfig();
+    if (configError) {
+      return { success: false, error: configError };
+    }
+
     const config = getConfig() as any;
     const { targetDomain, targetDomains, targetPort } = args || {};
-    // 优先使用调用参数，否则使用项目根 mockCharlesConfig.json 中的配置（mockServe 内无预设）
     const domainsFromArgs = targetDomains ?? (targetDomain ? [targetDomain] : null);
     const domainsFromConfig = config.charlesTargetDomains ?? (config.charlesTargetDomain ? [config.charlesTargetDomain] : []);
     const domains = domainsFromArgs ?? (domainsFromConfig.length > 0 ? domainsFromConfig : null);
@@ -368,10 +365,12 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
       );
     }
 
-    const rules = rulesManager.getAllRules();
+    const { ensureRulesDirectory } = await import('./config.js');
     const { dirname } = await import('path');
     const rulesDir = dirname(config.rulesPath);
-    // 以当前实际启动的代理端口为准：内存 → 项目内 .actual-proxy-port 文件 → 配置端口
+    ensureRulesDirectory(config.rulesPath);
+
+    const rules = getRulesManager().getAllRules();
     const workspaceRootForPort = (args?.workspaceRoot && typeof args.workspaceRoot === 'string') ? args.workspaceRoot.trim() : undefined;
     const mockServerPort = getEffectiveProxyPortForCharles(workspaceRootForPort);
     const xmlPath = generateCharlesXMLConfigFile(rules, mockServerPort, domains, port, rulesDir);
@@ -396,9 +395,14 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   },
 
   reload_rules: async () => {
+    const configError = checkProjectConfig();
+    if (configError) {
+      return { success: false, error: configError };
+    }
+
     try {
       reloadRules();
-      const rules = rulesManager.getAllRules();
+      const rules = getRulesManager().getAllRules();
       return {
         success: true,
         message: '规则已重新加载',

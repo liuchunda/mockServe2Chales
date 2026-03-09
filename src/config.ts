@@ -173,12 +173,38 @@ export async function findAvailablePort(startPort: number, maxAttempts: number =
 
 /**
  * 获取配置实例（每次调用时重新加载，确保使用最新的项目根目录）
+ * 注意：不再在此处自动创建目录，目录仅在真正写入文件时按需创建
  */
 export function getConfig(): ServerConfig {
-  // 每次都重新加载配置，确保使用最新的 process.cwd()
-  const config = loadConfig();
-  ensureRulesDirectory(config.rulesPath);
-  return config;
+  return loadConfig();
+}
+
+/**
+ * 检查用户项目根目录下是否存在 mockCharlesConfig.json 配置文件。
+ * 若不存在，返回包含错误信息和配置模版的提示字符串；存在则返回 null。
+ */
+export function checkProjectConfig(): string | null {
+  const projectRoot = getWorkspaceRootInternal();
+  const configPath = join(projectRoot, 'mockCharlesConfig.json');
+  if (!existsSync(configPath)) {
+    const template = JSON.stringify(
+      {
+        charlesTargetDomains: ['api.example.com'],
+        charlesTargetPort: 443,
+      },
+      null,
+      2
+    );
+    return (
+      `未在项目根目录（${projectRoot}）找到 mockCharlesConfig.json 配置文件。\n\n` +
+      `请在项目根目录创建 mockCharlesConfig.json，内容模版如下：\n\n` +
+      `\`\`\`json\n${template}\n\`\`\`\n\n` +
+      `字段说明：\n` +
+      `  - charlesTargetDomains：需要代理的 API 域名列表（必填）\n` +
+      `  - charlesTargetPort：目标 API 端口，默认 443（可选）`
+    );
+  }
+  return null;
 }
 
 /**
@@ -214,16 +240,16 @@ function getActualProxyPortFilePath(rulesPath: string): string {
 }
 
 /**
- * 将当前实际代理端口写入项目 _mock-rules 目录，供生成 Charles 配置时读取（含跨进程场景）
+ * 将当前实际代理端口写入项目 _mock-rules 目录，供生成 Charles 配置时读取（含跨进程场景）。
+ * 若目录尚未创建（用户还未使用任何 tool），写入会静默失败，不产生副作用。
  */
 export function writeActualProxyPortFile(port: number): void {
   const config = loadConfig();
-  ensureRulesDirectory(config.rulesPath);
   const filePath = getActualProxyPortFilePath(config.rulesPath);
   try {
     writeFileSync(filePath, String(port), 'utf-8');
   } catch {
-    // 忽略写入失败（如只读目录）
+    // 目录不存在或无写入权限时静默忽略，_actualProxyPort 内存值仍可用
   }
 }
 

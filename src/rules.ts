@@ -76,18 +76,13 @@ export class RulesManager {
       this.stopFileWatcher();
     }
 
-    // 确保目录存在
-    ensureRulesDirectory(this.rulesPath);
-
     if (!existsSync(this.rulesPath)) {
+      // 文件不存在时，仅在内存中初始化空规则，不创建目录或文件（懒创建）
       if (pathChanged) {
         this.startFileWatcher();
       }
-      const defaultData: MockRulesData = {
-        rules: [],
-        version: '1.0.0',
-      };
-      this.saveRulesToFile(defaultData);
+      this.rules.clear();
+      this.lastLoadMtimeMs = 0;
       return;
     }
 
