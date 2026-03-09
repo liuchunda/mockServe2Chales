@@ -174,7 +174,7 @@ export class RulesManager {
   }
 
   /**
-   * 持久化所有规则到 miMockServerConfig.json 中 rulesPath 指向的文件（项目 _mock-rules/rules.json）
+   * 持久化所有规则到 mockCharlesConfig.json 中 rulesPath 指向的文件（项目 _mock-rules/rules.json）
    */
   private persistRules(): void {
     const currentPath = getConfig().rulesPath;
@@ -207,18 +207,18 @@ export class RulesManager {
         return;
       }
       
-      // Charles 域名/端口仅从项目根 miMockServerConfig.json 读取，mockServe 内不设预设
+      // Charles 域名/端口仅从项目根 mockCharlesConfig.json 读取，mockServe 内不设预设
       const domains = config.charlesTargetDomains ?? (config.charlesTargetDomain ? [config.charlesTargetDomain] : []);
       const targetPort = config.charlesTargetPort;
       if (domains.length === 0) {
         console.error(
-          '[Charles] 未读取到 charlesTargetDomains 配置，已跳过生成。请在项目根目录的 miMockServerConfig.json 中配置 charlesTargetDomains（数组）和 charlesTargetPort（可选，默认 443）。'
+          '[Charles] 未读取到 charlesTargetDomains 配置，已跳过生成。请在项目根目录的 mockCharlesConfig.json 中配置 charlesTargetDomains（数组）和 charlesTargetPort（可选，默认 443）。'
         );
         return;
       }
       if (targetPort == null || targetPort === undefined) {
         console.error(
-          '[Charles] 未读取到 charlesTargetPort 配置，已使用默认 443。建议在项目根 miMockServerConfig.json 中配置 charlesTargetPort。'
+          '[Charles] 未读取到 charlesTargetPort 配置，已使用默认 443。建议在项目根 mockCharlesConfig.json 中配置 charlesTargetPort。'
         );
       }
       const port = targetPort ?? 443;

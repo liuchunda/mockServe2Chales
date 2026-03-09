@@ -145,7 +145,7 @@ async function main() {
         console.error(`[mockserver] 规则目录: ${config.rulesPath}`);
         if (actualPort !== config.port) {
           console.error(`[mockserver] 配置端口 ${config.port} 已被占用，自动切换至 ${actualPort}`);
-          console.error(`[mockserver] 请在 miMockServerConfig.json 中将 port 改为 ${actualPort}，或重新生成 Charles 映射`);
+          console.error(`[mockserver] 请在 mockCharlesConfig.json 中将 port 改为 ${actualPort}，或重新生成 Charles 映射`);
         }
       })
     : null;

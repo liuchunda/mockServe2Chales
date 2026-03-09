@@ -144,13 +144,13 @@ export const getRequestLogsTool: Tool = {
  */
 export const generateCharlesConfigTool: Tool = {
   name: 'generate_charles_config',
-  description: '生成 Charles 映射文件（Charles Map Remote 配置，输出 map-remote.xml）。当用户说「生成Charles Map Remote」「帮我重新生成映射文件」「帮我生成映射文件」「生成 Charles 映射文件」「生成映射文件」「Charles 映射文件」「更新映射文件配置」「导出 Charles 配置」时，应调用此 MCP 工具。域名与端口可从项目根 miMockServerConfig.json 的 charlesTargetDomains、charlesTargetPort 读取，也可通过参数传入。',
+  description: '生成 Charles 映射文件（Charles Map Remote 配置，输出 map-remote.xml）。当用户说「生成Charles Map Remote」「帮我重新生成映射文件」「帮我生成映射文件」「生成 Charles 映射文件」「生成映射文件」「Charles 映射文件」「更新映射文件配置」「导出 Charles 配置」时，应调用此 MCP 工具。域名与端口可从项目根 mockCharlesConfig.json 的 charlesTargetDomains、charlesTargetPort 读取，也可通过参数传入。',
   inputSchema: {
     type: 'object',
     properties: {
       targetDomain: {
         type: 'string',
-        description: '目标 API 域名（可选，不传则从项目根 miMockServerConfig.json 的 charlesTargetDomains 读取）',
+        description: '目标 API 域名（可选，不传则从项目根 mockCharlesConfig.json 的 charlesTargetDomains 读取）',
       },
       targetDomains: {
         type: 'array',
@@ -184,7 +184,7 @@ export const reloadRulesTool: Tool = {
  */
 export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   add_mock_rule: async (args: any) => {
-    // 确保规则写入项目中的 _mock-rules/rules.json（与 miMockServerConfig.json 的 rulesPath 一致）
+    // 确保规则写入项目中的 _mock-rules/rules.json（与 mockCharlesConfig.json 的 rulesPath 一致）
     if (getConfig().rulesPath !== rulesManager.getRulesPath()) {
       reloadRules();
     }
@@ -320,7 +320,7 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
       const { getWorkspaceRoot } = await import('./config.js');
       const { join } = await import('path');
       const projectRoot = getWorkspaceRoot();
-      const configPath = join(projectRoot, 'miMockServerConfig.json');
+      const configPath = join(projectRoot, 'mockCharlesConfig.json');
       writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
     } catch (error) {
       console.warn('Failed to save config:', error);
@@ -356,7 +356,7 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
   generate_charles_config: async (args: any) => {
     const config = getConfig() as any;
     const { targetDomain, targetDomains, targetPort } = args || {};
-    // 优先使用调用参数，否则使用项目根 miMockServerConfig.json 中的配置（mockServe 内无预设）
+    // 优先使用调用参数，否则使用项目根 mockCharlesConfig.json 中的配置（mockServe 内无预设）
     const domainsFromArgs = targetDomains ?? (targetDomain ? [targetDomain] : null);
     const domainsFromConfig = config.charlesTargetDomains ?? (config.charlesTargetDomain ? [config.charlesTargetDomain] : []);
     const domains = domainsFromArgs ?? (domainsFromConfig.length > 0 ? domainsFromConfig : null);
@@ -364,7 +364,7 @@ export const toolHandlers: Record<string, (args: any) => Promise<any>> = {
 
     if (!domains || (Array.isArray(domains) && domains.length === 0)) {
       throw new Error(
-        '未读取到 Charles 域名配置。请在项目根目录的 miMockServerConfig.json 中配置 charlesTargetDomains（数组）和 charlesTargetPort（可选，默认 443），或调用时传入 targetDomains / targetDomain 和 targetPort。'
+        '未读取到 Charles 域名配置。请在项目根目录的 mockCharlesConfig.json 中配置 charlesTargetDomains（数组）和 charlesTargetPort（可选，默认 443），或调用时传入 targetDomains / targetDomain 和 targetPort。'
       );
     }
 

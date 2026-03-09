@@ -40,7 +40,7 @@ RN App → Charles Proxy → MCP Mock Server（HTTP 代理）→ 返回 Mock 数
 
 ### 2. 在项目根目录创建配置文件
 
-在**项目根目录**创建 `miMockServerConfig.json`：
+在**项目根目录**创建 `mockCharlesConfig.json`：
 
 ```json
 {
@@ -150,7 +150,7 @@ MCP 服务会自动调用 `add_mock_rule` 工具创建规则，并生成 Charles
 
 | 参数 | 说明 |
 |------|------|
-| `targetDomains` | 域名数组，不传则从 `miMockServerConfig.json` 读取 |
+| `targetDomains` | 域名数组，不传则从 `mockCharlesConfig.json` 读取 |
 | `targetDomain` | 单个域名（兼容旧用法） |
 | `targetPort` | 目标端口，不传则从配置读取，默认 `443` |
 

@@ -61,7 +61,7 @@ export interface ExtendedConfig extends ServerConfig {
 
 /**
  * 获取 mockServe 包所在目录（MCP 代码所在包的根目录）
- * 用于在 process.cwd() 与预期不符时仍能读取包内的 miMockServerConfig.json
+ * 用于在 process.cwd() 与预期不符时仍能读取包内的 mockCharlesConfig.json
  */
 function getMockServeRoot(): string {
   return resolve(__dirname, '..');
@@ -69,7 +69,7 @@ function getMockServeRoot(): string {
 
 /**
  * 加载配置
- * 配置文件查找顺序：项目根 miMockServerConfig.json → 项目根 config.json → mockServe 包根 miMockServerConfig.json
+ * 配置文件查找顺序：项目根 mockCharlesConfig.json → 项目根 config.json → mockServe 包根 mockCharlesConfig.json
  * 这样在 MCP 运行时 cwd 不是工作区根目录时，仍能读到包内的配置文件
  */
 export function loadConfig(): ServerConfig {
@@ -78,9 +78,9 @@ export function loadConfig(): ServerConfig {
   const defaultConfig = getDefaultConfig();
 
   // 按优先级确定要读取的配置文件路径
-  const projectConfigPathNew = join(projectRoot, 'miMockServerConfig.json');
+  const projectConfigPathNew = join(projectRoot, 'mockCharlesConfig.json');
   const projectConfigPathOld = join(projectRoot, 'config.json');
-  const mockServeConfigPath = join(mockServeRoot, 'miMockServerConfig.json');
+  const mockServeConfigPath = join(mockServeRoot, 'mockCharlesConfig.json');
 
   let configPath: string | null = null;
   if (existsSync(projectConfigPathNew)) {
@@ -91,7 +91,7 @@ export function loadConfig(): ServerConfig {
     configPath = mockServeConfigPath;
   }
 
-  // 端口仅从 mockServe 包内 miMockServerConfig.json 读取（若存在）
+  // 端口仅从 mockServe 包内 mockCharlesConfig.json 读取（若存在）
   let portFromMockServe = defaultConfig.port;
   if (existsSync(mockServeConfigPath)) {
     try {
