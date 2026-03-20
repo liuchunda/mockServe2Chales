@@ -231,7 +231,7 @@ mockserver-mcp-charles/
 ### 请求没有被 Mock 拦截
 
 1. 确认 Charles 已启用 Map Remote 且规则已导入
-2. 确认 RN 应用流量经过 Charles 代理
+2. 确认 移动端 应用流量经过 Charles 代理
 3. 用 `list_mock_rules` 检查规则是否存在
 4. 用 `get_request_logs` 查看请求日志，确认请求是否到达 Mock 服务
 
@@ -248,3 +248,6 @@ mockserver-mcp-charles/
 ## 许可证
 
 MIT
+
+## 扩展
+后端接口如果使用接口管理平台的话例如YApi Pro，apifox可以扩展通过平台开放api接入数据，从而实现输入链接一键mock（mock质量依赖文档）
