@@ -79,12 +79,15 @@ export function loadConfig(): ServerConfig {
 
   // 按优先级确定要读取的配置文件路径
   const projectConfigPathNew = join(projectRoot, 'mockCharlesConfig.json');
+  const projectConfigPathScripts = join(projectRoot, 'scripts', 'mockCharlesConfig.json');
   const projectConfigPathOld = join(projectRoot, 'config.json');
   const mockServeConfigPath = join(mockServeRoot, 'mockCharlesConfig.json');
 
   let configPath: string | null = null;
   if (existsSync(projectConfigPathNew)) {
     configPath = projectConfigPathNew;
+  } else if (existsSync(projectConfigPathScripts)) {
+    configPath = projectConfigPathScripts;
   } else if (existsSync(projectConfigPathOld)) {
     configPath = projectConfigPathOld;
   } else if (existsSync(mockServeConfigPath)) {
@@ -111,14 +114,13 @@ export function loadConfig(): ServerConfig {
       const userConfig = JSON.parse(configContent);
       const { port: _, ...userConfigWithoutPort } = userConfig;
       const mergedConfig = { ...defaultConfig, ...userConfigWithoutPort, port: portFromMockServe };
-      // 相对路径基于「当前使用的配置文件所在目录」解析，避免 cwd 不对时路径错误
-      const configBaseDir = dirname(configPath);
+      // rulesPath 始终基于项目根目录解析，避免配置文件放在 scripts/ 等子目录时路径偏移
       if (userConfig.rulesPath) {
         mergedConfig.rulesPath = userConfig.rulesPath.startsWith('/')
           ? userConfig.rulesPath
-          : join(configBaseDir, userConfig.rulesPath);
+          : join(projectRoot, userConfig.rulesPath);
       } else {
-        mergedConfig.rulesPath = join(configBaseDir, '_mock-rules', 'rules.json');
+        mergedConfig.rulesPath = join(projectRoot, '_mock-rules', 'rules.json');
       }
       return mergedConfig;
     } catch (error) {
@@ -185,8 +187,9 @@ export function getConfig(): ServerConfig {
  */
 export function checkProjectConfig(): string | null {
   const projectRoot = getWorkspaceRootInternal();
-  const configPath = join(projectRoot, 'mockCharlesConfig.json');
-  if (!existsSync(configPath)) {
+  const configPathRoot = join(projectRoot, 'mockCharlesConfig.json');
+  const configPathScripts = join(projectRoot, 'scripts', 'mockCharlesConfig.json');
+  if (!existsSync(configPathRoot) && !existsSync(configPathScripts)) {
     const template = JSON.stringify(
       {
         charlesTargetDomains: ['api.example.com'],
@@ -196,7 +199,7 @@ export function checkProjectConfig(): string | null {
       2
     );
     return (
-      `未在项目根目录（${projectRoot}）找到 mockCharlesConfig.json 配置文件。\n\n` +
+      `未在项目根目录（${projectRoot}）或 scripts/ 目录下找到 mockCharlesConfig.json 配置文件。\n\n` +
       `请在项目根目录创建 mockCharlesConfig.json，内容模版如下：\n\n` +
       `\`\`\`json\n${template}\n\`\`\`\n\n` +
       `字段说明：\n` +
