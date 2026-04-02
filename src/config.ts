@@ -114,13 +114,14 @@ export function loadConfig(): ServerConfig {
       const userConfig = JSON.parse(configContent);
       const { port: _, ...userConfigWithoutPort } = userConfig;
       const mergedConfig = { ...defaultConfig, ...userConfigWithoutPort, port: portFromMockServe };
-      // rulesPath 始终基于项目根目录解析，避免配置文件放在 scripts/ 等子目录时路径偏移
+      // 相对路径基于「当前使用的配置文件所在目录」解析，避免 cwd 不对时路径错误
+      const configBaseDir = dirname(configPath);
       if (userConfig.rulesPath) {
         mergedConfig.rulesPath = userConfig.rulesPath.startsWith('/')
           ? userConfig.rulesPath
-          : join(projectRoot, userConfig.rulesPath);
+          : join(configBaseDir, userConfig.rulesPath);
       } else {
-        mergedConfig.rulesPath = join(projectRoot, '_mock-rules', 'rules.json');
+        mergedConfig.rulesPath = join(configBaseDir, '_mock-rules', 'rules.json');
       }
       return mergedConfig;
     } catch (error) {
