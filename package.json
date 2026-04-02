@@ -1,6 +1,6 @@
 {
   "name": "mockserver-mcp-charles",
-  "version": "1.1.9",
+  "version": "1.2.0",
   "description": "MCP Mock Server for React Native with Charles proxy support",
   "main": "dist/server.js",
   "bin": {
